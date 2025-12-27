@@ -11,6 +11,8 @@ class TransparentWindow(Window):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
+        # https://stackoverflow.com/questions/550001/fully-transparent-windows-in-pygame
+
         hwnd = pygame.display.get_wm_info()["window"]
         win32gui.SetWindowLong(
             hwnd,
