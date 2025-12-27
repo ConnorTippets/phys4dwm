@@ -8,8 +8,13 @@ FUSCHIA = (255, 0, 128)
 
 
 class TransparentWindow(Window):
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
+    def __init__(self, width: int, height: int, fps: int = 60):
+        self.width, self.height = self.size = width, height
+        self.fps = fps
+
+        self.screen = pygame.display.set_mode(self.size, pygame.NOFRAME)
+        self.clock = pygame.time.Clock()
+        self.dt = 0
 
         # https://stackoverflow.com/questions/550001/fully-transparent-windows-in-pygame
 
