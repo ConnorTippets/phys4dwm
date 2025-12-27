@@ -9,8 +9,8 @@ FUSCHIA = (255, 0, 128)
 
 class TransparentWindow(Window):
     def __init__(self, width: int, height: int, fps: int = 60):
-        self.width, self.height = self.size = width, height
-        self.fps = fps
+        self.width, self.height = self.size = width + 2, height + 29
+        self.fps = 60
 
         self.screen = pygame.display.set_mode(self.size, pygame.NOFRAME)
         self.clock = pygame.time.Clock()
@@ -29,8 +29,23 @@ class TransparentWindow(Window):
             hwnd, win32api.RGB(*FUSCHIA), 0, win32con.LWA_COLORKEY
         )
 
+        self.fake_width, self.fake_height = self.fake_size = width, height
+        self.fake_fps = fps
+        self.fake_screen = pygame.Surface(self.fake_size)
+        self.fake_clock = pygame.time.Clock()
+        self.fake_dt = 0
+
+        self.fake_image = pygame.image.load("./brongledingle.png")
+
     def draw_loop(self):
         self.screen.fill(FUSCHIA)
+        pygame.draw.rect(self.screen, (200, 200, 200), (0, 0, self.width, 28))
+        pygame.draw.rect(
+            self.screen, (200, 200, 200), (0, 0, self.width, self.height), 1
+        )
+
+        self.fake_screen.blit(self.fake_image, (0, 0))
+        self.screen.blit(self.fake_screen, (1, 28))
 
 
 def main():
