@@ -126,6 +126,9 @@ def rotate(v: tuple, angle: float) -> tuple:
     )
 
 
-def calc_angular_torque(hit_point: tuple, hit_dir: tuple, impulse: float) -> float:
-    impulse_vec = mul(hit_dir, impulse)
+def calc_angular_torque(hit_point: tuple, hit_dir: tuple, impulse_vec: tuple) -> float:
     return (hit_point[0] * impulse_vec[1]) - (hit_point[1] * impulse_vec[0])
+
+
+def fvti(v: tuple[float, ...]) -> tuple[int, ...]:
+    return tuple([int(k) for k in v])

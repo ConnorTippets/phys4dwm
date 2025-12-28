@@ -17,6 +17,7 @@ from utils import (
     unit,
     length_sqr,
     calc_angular_torque,
+    fvti,
 )
 
 FUSCHIA = (255, 0, 128)
@@ -33,7 +34,8 @@ def rotate_img(
 
 class Transform:
     def __init__(self):
-        self.position: tuple[int, int] = div((1920, 1080), 2)
+        self.position: tuple[float, float] = div((1920, 1080), 2)
+        self.velocity: tuple[float, float] = (0, 0)
         self.angle: float = 0
         self.angular_velocity: float = 0
 
@@ -61,7 +63,8 @@ class SubWindow:
         self.mass: int = 20
         self.moment_of_inertia: float = (self.mass * length_sqr(self.real_size)) / 12
 
-        self.image = pygame.image.load("./cubve.png")
+        self.image = [pygame.image.load(f"./gilled{i}.png") for i in range(1, 8)]
+        self.im_index = 0
 
     def get_local_corners(
         self, titlebar: bool = False
@@ -81,6 +84,10 @@ class SubWindow:
 
         return topleft, topright, bottomright, bottomleft
 
+    def process_event(self, event: Event):
+        if event.type == pygame.KEYDOWN and event.key == pygame.K_g:
+            self.im_index = (self.im_index + 1) % 7
+
     def get_world_corners(
         self, titlebar: bool = False
     ) -> tuple[tuple, tuple, tuple, tuple]:
@@ -91,7 +98,7 @@ class SubWindow:
         return topleft, topright, bottomright, bottomleft
 
     def draw_loop(self):
-        self.screen.blit(self.image, (0, 0))
+        self.screen.blit(self.image[self.im_index], (0, 0))
 
     def draw(self):
         self.real_screen.fill(FUSCHIA)
@@ -179,17 +186,41 @@ class MainWindow:
                     )
 
                     # I = F*dT = M*A*dT
-                    impulse = window.mass * 20000 * 4
+                    impulse_vec = mul(dir, window.mass * 2500 * 4)
+                    angular_torque = calc_angular_torque(hit_point, dir, impulse_vec)
                     window.transform.angular_velocity += (
-                        calc_angular_torque(hit_point, dir, impulse)
-                        / window.moment_of_inertia
+                        angular_torque / window.moment_of_inertia
+                    )
+                    window.transform.velocity = add(
+                        window.transform.velocity, div(impulse_vec, window.mass)
                     )
         elif event.type == pygame.MOUSEBUTTONUP and event.button == 1:
             for window in self.sub_windows:
                 window.being_held = False
 
+        for window in self.sub_windows:
+            window.process_event(event)
+
     def handle_movement(self, window: SubWindow, rel_movement: tuple[int, int]):
+        if window.transform.position[0] < 0:
+            window.transform.position = (1920 // 2, 1080 // 2)
+        if window.transform.position[0] > 1920:
+            window.transform.position = (1920 // 2, 1080 // 2)
+        if window.transform.position[1] < 0:
+            window.transform.position = (1920 // 2, 1080 // 2)
+        if window.transform.position[1] > 1080:
+            window.transform.position = (1920 // 2, 1080 // 2)
+
         if not window.being_held:
+            window.transform.velocity = mul(window.transform.velocity, 0.99)
+
+            window.transform.angle += window.transform.angular_velocity * self.dt
+
+            window.transform.position = add(
+                window.transform.position,
+                mul(window.transform.velocity, self.dt),
+            )
+
             return
 
         window.transform.position = add(window.transform.position, rel_movement)
@@ -212,7 +243,7 @@ class MainWindow:
                 rotated = pygame.transform.rotate(
                     window.real_screen, -window.transform.angle
                 )
-                rect = rotated.get_rect(center=window.transform.position)
+                rect = rotated.get_rect(center=fvti(window.transform.position))
 
                 self.screen.blit(rotated, rect)
 
@@ -227,11 +258,6 @@ class MainWindow:
                 )
 
                 pygame.draw.circle(self.screen, "red", (1920 // 3 * 2, 1080 // 2), 10)
-
-                if not window.being_held:
-                    window.transform.angle += (
-                        window.transform.angular_velocity * self.dt
-                    )
 
                 if not intersect is False:
                     pygame.draw.circle(
