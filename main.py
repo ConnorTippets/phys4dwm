@@ -22,13 +22,14 @@ def rotate_img(
 
 class Transform:
     def __init__(self):
-        self.position: tuple[int, int] = (0, 0)
+        self.position: tuple[int, int] = div((1920, 1080), 2)
+        self.angle: int = 20
 
     def local_to_world(self, local_pos: tuple[int, int]) -> tuple[int, int]:
-        return add(local_pos, self.position)
+        return add(rotate(local_pos, self.angle), self.position)
 
     def world_to_local(self, world_pos: tuple[int, int]) -> tuple[int, int]:
-        return sub(world_pos, self.position)
+        return rotate(sub(world_pos, self.position), -self.angle)
 
 
 class SubWindow:
@@ -110,7 +111,10 @@ class MainWindow:
             exit()
         elif event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
             for window in self.sub_windows:
-                topleft = window.transform.position
+                topleft = window.transform.local_to_world(
+                    (-window.real_width // 2, -window.real_height // 2)
+                )
+
                 if in_rect(
                     event.pos, topleft[0], topleft[1], window.real_width, TITLEBAR_H
                 ):
@@ -139,10 +143,13 @@ class MainWindow:
                 self.handle_movement(window, rel_movement)
 
                 window.draw()
-                self.screen.blit(
-                    window.real_screen,
-                    sub(window.transform.position, div(window.real_size, 2)),
+
+                rotated = pygame.transform.rotate(
+                    window.real_screen, -window.transform.angle
                 )
+                rect = rotated.get_rect(center=window.transform.position)
+
+                self.screen.blit(rotated, rect)
 
             pygame.display.flip()
             self.dt = self.clock.tick(self.fps) / 1000

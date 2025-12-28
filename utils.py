@@ -25,6 +25,6 @@ def rotate(v: tuple, angle: int) -> tuple:
     sin = math.sin(math.radians(angle))
 
     return (
-        int(v[0] * abs(cos) + v[1] * abs(sin)),
-        int(v[0] * abs(sin) - v[1] * abs(cos)),
+        int(v[0] * cos - v[1] * sin),
+        int(v[0] * sin + v[1] * cos),
     )
