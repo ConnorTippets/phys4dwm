@@ -38,7 +38,7 @@ class SubWindow:
             width + 2,
             height + TITLEBAR_H + 1,
         )
-        self.real_screen = pygame.Surface(self.real_size)
+        self.real_screen = pygame.Surface(self.real_size, pygame.SRCALPHA)
 
         self.width, self.height = self.size = width, height
         self.screen = pygame.Surface(self.size)
@@ -170,6 +170,10 @@ class MainWindow:
 def main():
     app = MainWindow()
     app.add_window(SubWindow(400, 400))
+    app.add_window(SubWindow(400, 400))
+    app.sub_windows[0].transform.position = (1920 // 3, 1080 // 2)
+    app.sub_windows[1].transform.position = (1920 // 3 * 2, 1080 // 2)
+    app.sub_windows[1].transform.angle = 25
     app.run()
 
 
