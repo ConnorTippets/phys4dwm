@@ -23,7 +23,7 @@ def rotate_img(
 class Transform:
     def __init__(self):
         self.position: tuple[int, int] = div((1920, 1080), 2)
-        self.angle: int = 20
+        self.angle: int = 0
 
     def local_to_world(self, local_pos: tuple[int, int]) -> tuple[int, int]:
         return add(rotate(local_pos, self.angle), self.position)
@@ -114,10 +114,17 @@ class MainWindow:
                 topleft = window.transform.local_to_world(
                     (-window.real_width // 2, -window.real_height // 2)
                 )
+                topright = window.transform.local_to_world(
+                    (window.real_width // 2, -window.real_height // 2)
+                )
+                bottomright = window.transform.local_to_world(
+                    (window.real_width // 2, -window.real_height // 2 + TITLEBAR_H)
+                )
+                bottomleft = window.transform.local_to_world(
+                    (-window.real_width // 2, -window.real_height // 2 + TITLEBAR_H)
+                )
 
-                if in_rect(
-                    event.pos, topleft[0], topleft[1], window.real_width, TITLEBAR_H
-                ):
+                if in_rect(event.pos, topleft, topright, bottomright, bottomleft):
                     window.being_held = True
         elif event.type == pygame.MOUSEBUTTONUP and event.button == 1:
             for window in self.sub_windows:
@@ -141,6 +148,9 @@ class MainWindow:
 
             for window in self.sub_windows:
                 self.handle_movement(window, rel_movement)
+
+                if not window.being_held:
+                    window.transform.angle += 1
 
                 window.draw()
 
