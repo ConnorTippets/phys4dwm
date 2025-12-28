@@ -1,4 +1,4 @@
-import math
+import math, typing
 
 
 def add(a: tuple, b: tuple) -> tuple:
@@ -9,11 +9,17 @@ def sub(a: tuple, b: tuple) -> tuple:
     return a[0] - b[0], a[1] - b[1]
 
 
-def div(v: tuple, s: int) -> tuple:
+def div(v: tuple, s: int | float) -> tuple:
     return v[0] / s, v[1] / s
 
 
-def intersects(a: tuple, b: tuple, c: tuple, d: tuple) -> bool:
+def mul(v: tuple, s: int | float) -> tuple:
+    return v[0] * s, v[1] * s
+
+
+def intersection(
+    a: tuple, b: tuple, c: tuple, d: tuple
+) -> typing.Literal[False] | tuple[int, int]:
     x1, y1 = a
     x2, y2 = b
     x3, y3 = c
@@ -33,7 +39,23 @@ def intersects(a: tuple, b: tuple, c: tuple, d: tuple) -> bool:
     if not intersecting:
         return False
 
-    return True
+    return x1 + t * (x2 - x1), y1 + t * (y2 - y1)
+
+
+def intersects(a: tuple, b: tuple, c: tuple, d: tuple) -> bool:
+    return not intersection(a, b, c, d) is False
+
+
+def length_sqr(v: tuple) -> float:
+    return v[0] ** 2 + v[1] ** 2
+
+
+def length(v: tuple) -> float:
+    return math.sqrt(length_sqr(v))
+
+
+def unit(v: tuple) -> tuple:
+    return div(v, length(v))
 
 
 def in_rect(
@@ -60,11 +82,38 @@ def in_rect(
     return not (intersections % 2) == 0
 
 
+def ray_aab_intersection(
+    v: tuple, dir: tuple, topleft: tuple, size: tuple
+) -> tuple[int, int] | typing.Literal[False]:
+    idx = 1 / dir[0]
+    idy = 1 / dir[1]
+
+    tx1 = (topleft[0] - v[0]) * idx
+    tx2 = (topleft[0] + size[0] - v[0]) * idx
+
+    txnear = min(tx1, tx2)
+    txfar = max(tx1, tx2)
+
+    ty1 = (topleft[1] - v[1]) * idy
+    ty2 = (topleft[1] + size[1] - v[1]) * idy
+
+    tynear = min(ty1, ty2)
+    tyfar = max(ty1, ty2)
+
+    tmin = max(txnear, tynear)
+    tmax = min(txfar, tyfar)
+
+    if tmin > tmax:
+        return False
+
+    return add(v, mul(dir, tmin))
+
+
 def rotate(v: tuple, angle: int) -> tuple:
     cos = math.cos(math.radians(angle))
     sin = math.sin(math.radians(angle))
 
     return (
-        int(v[0] * cos - v[1] * sin),
-        int(v[0] * sin + v[1] * cos),
+        v[0] * cos - v[1] * sin,
+        v[0] * sin + v[1] * cos,
     )

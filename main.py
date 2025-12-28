@@ -6,7 +6,7 @@ import win32con  # type: ignore
 import win32gui  # type: ignore
 import pyautogui
 
-from utils import add, sub, div, in_rect, rotate
+from utils import add, sub, div, mul, in_rect, rotate, ray_aab_intersection, unit
 
 FUSCHIA = (255, 0, 128)
 TITLEBAR_H = 28
@@ -23,7 +23,7 @@ def rotate_img(
 class Transform:
     def __init__(self):
         self.position: tuple[int, int] = div((1920, 1080), 2)
-        self.angle: int = 0
+        self.angle: int = 90
 
     def local_to_world(self, local_pos: tuple[int, int]) -> tuple[int, int]:
         return add(rotate(local_pos, self.angle), self.position)
@@ -47,6 +47,33 @@ class SubWindow:
         self.being_held = False
 
         self.image = pygame.image.load("./dankpods.png")
+
+    def get_local_corners(
+        self, titlebar: bool = False
+    ) -> tuple[tuple, tuple, tuple, tuple]:
+        topleft = (-self.real_width // 2, -self.real_height // 2)
+        topright = (self.real_width // 2, -self.real_height // 2)
+        bottomright = (
+            (self.real_width // 2, -self.real_height // 2 + TITLEBAR_H)
+            if titlebar
+            else (self.real_width // 2, self.real_height // 2)
+        )
+        bottomleft = (
+            (-self.real_width // 2, -self.real_height // 2 + TITLEBAR_H)
+            if titlebar
+            else (-self.real_width // 2, self.real_height // 2)
+        )
+
+        return topleft, topright, bottomright, bottomleft
+
+    def get_world_corners(
+        self, titlebar: bool = False
+    ) -> tuple[tuple, tuple, tuple, tuple]:
+        topleft, topright, bottomright, bottomleft = list(
+            map(self.transform.local_to_world, self.get_local_corners(titlebar))
+        )
+
+        return topleft, topright, bottomright, bottomleft
 
     def draw_loop(self):
         self.screen.blit(self.image, (0, 0))
@@ -111,17 +138,8 @@ class MainWindow:
             exit()
         elif event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
             for window in self.sub_windows:
-                topleft = window.transform.local_to_world(
-                    (-window.real_width // 2, -window.real_height // 2)
-                )
-                topright = window.transform.local_to_world(
-                    (window.real_width // 2, -window.real_height // 2)
-                )
-                bottomright = window.transform.local_to_world(
-                    (window.real_width // 2, -window.real_height // 2 + TITLEBAR_H)
-                )
-                bottomleft = window.transform.local_to_world(
-                    (-window.real_width // 2, -window.real_height // 2 + TITLEBAR_H)
+                topleft, topright, bottomright, bottomleft = window.get_world_corners(
+                    True
                 )
 
                 if in_rect(event.pos, topleft, topright, bottomright, bottomleft):
@@ -161,6 +179,26 @@ class MainWindow:
 
                 self.screen.blit(rotated, rect)
 
+                intersect = ray_aab_intersection(
+                    window.transform.world_to_local(
+                        mouse_pos  # pyright: ignore[reportArgumentType]
+                    ),
+                    rotate(
+                        unit(sub(window.transform.position, mouse_pos)),
+                        -window.transform.angle,
+                    ),
+                    window.get_local_corners()[0],
+                    window.real_size,
+                )
+
+                if not intersect is False:
+                    pygame.draw.circle(
+                        self.screen,
+                        "red",
+                        window.transform.local_to_world(intersect),
+                        10,
+                    )
+
             pygame.display.flip()
             self.dt = self.clock.tick(self.fps) / 1000
 
@@ -170,10 +208,9 @@ class MainWindow:
 def main():
     app = MainWindow()
     app.add_window(SubWindow(400, 400))
-    app.add_window(SubWindow(400, 400))
-    app.sub_windows[0].transform.position = (1920 // 3, 1080 // 2)
-    app.sub_windows[1].transform.position = (1920 // 3 * 2, 1080 // 2)
-    app.sub_windows[1].transform.angle = 25
+    # app.add_window(SubWindow(400, 400))
+    # app.sub_windows[0].transform.position = (1920 // 3, 1080 // 2)
+    # app.sub_windows[1].transform.position = (1920 // 3 * 2, 1080 // 2)
     app.run()
 
 
