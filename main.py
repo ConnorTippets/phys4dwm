@@ -6,13 +6,13 @@ import win32con  # type: ignore
 import win32gui  # type: ignore
 import pyautogui
 
-from utils import add, sub, in_rect, after_rotation
+from utils import add, sub, div, in_rect, rotate
 
 FUSCHIA = (255, 0, 128)
 TITLEBAR_H = 28
 
 
-def rotate(
+def rotate_img(
     image: pygame.Surface, center: tuple[int, int], angle: int
 ) -> tuple[pygame.Surface, pygame.Rect]:
     new_image = pygame.transform.rotate(image, angle)
@@ -139,7 +139,10 @@ class MainWindow:
                 self.handle_movement(window, rel_movement)
 
                 window.draw()
-                self.screen.blit(window.real_screen, window.transform.position)
+                self.screen.blit(
+                    window.real_screen,
+                    sub(window.transform.position, div(window.real_size, 2)),
+                )
 
             pygame.display.flip()
             self.dt = self.clock.tick(self.fps) / 1000
