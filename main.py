@@ -6,6 +6,8 @@ import win32con  # type: ignore
 import win32gui  # type: ignore
 import pyautogui
 
+pygame.font.init()
+
 from utils import (
     add,
     sub,
@@ -18,10 +20,14 @@ from utils import (
     length_sqr,
     calc_angular_torque,
     fvti,
+    length,
+    calc_impulse,
+    cross,
 )
 
 FUSCHIA = (255, 0, 128)
-TITLEBAR_H = 28
+TITLEBAR_H = 31
+FONT = pygame.font.SysFont("Segoe UI Semilight", 13)
 
 
 def rotate_img(
@@ -47,7 +53,7 @@ class Transform:
 
 
 class SubWindow:
-    def __init__(self, width: int, height: int):
+    def __init__(self, width: int, height: int, title: str = "File Explorer"):
         self.real_width, self.real_height = self.real_size = (
             width + 2,
             height + TITLEBAR_H + 1,
@@ -56,6 +62,8 @@ class SubWindow:
 
         self.width, self.height = self.size = width, height
         self.screen = pygame.Surface(self.size)
+
+        self.title = title
 
         self.transform = Transform()
         self.being_held = False
@@ -105,17 +113,18 @@ class SubWindow:
         self.screen.fill(FUSCHIA)
 
         pygame.draw.rect(
-            self.real_screen, "white", (0, 0, self.real_width, TITLEBAR_H), 0, -1, 5, 5
+            self.real_screen, "black", (0, 0, self.real_width, TITLEBAR_H), 0
         )
         pygame.draw.rect(
             self.real_screen,
-            "white",
+            (46, 46, 46),
             (0, 0, self.real_width, self.real_height),
             1,
-            -1,
-            5,
-            5,
         )
+
+        title = FONT.render(self.title, True, "white")
+
+        self.real_screen.blit(title, (8, 5))
 
         self.draw_loop()
 
@@ -186,7 +195,7 @@ class MainWindow:
                     )
 
                     # I = F*dT = M*A*dT
-                    impulse_vec = mul(dir, window.mass * 2500 * 4)
+                    impulse_vec = mul(dir, window.mass * 250 * 4)
                     angular_torque = calc_angular_torque(hit_point, dir, impulse_vec)
                     window.transform.angular_velocity += (
                         angular_torque / window.moment_of_inertia
@@ -202,17 +211,52 @@ class MainWindow:
             window.process_event(event)
 
     def handle_movement(self, window: SubWindow, rel_movement: tuple[int, int]):
-        if window.transform.position[0] < 0:
-            window.transform.position = (1920 // 2, 1080 // 2)
-        if window.transform.position[0] > 1920:
-            window.transform.position = (1920 // 2, 1080 // 2)
-        if window.transform.position[1] < 0:
-            window.transform.position = (1920 // 2, 1080 // 2)
-        if window.transform.position[1] > 1080:
-            window.transform.position = (1920 // 2, 1080 // 2)
+        # if window.transform.position[0] < 0:
+        #     window.transform.velocity = (
+        #         -window.transform.velocity[0],
+        #         window.transform.velocity[1],
+        #     )
+        #     window.transform.position = (20, window.transform.position[1])
+        # if window.transform.position[0] > 1920:
+        #     window.transform.velocity = (
+        #         -window.transform.velocity[0],
+        #         window.transform.velocity[1],
+        #     )
+        #     window.transform.position = (1900, window.transform.position[1])
+        # if window.transform.position[1] < 0:
+        #     window.transform.velocity = (
+        #         window.transform.velocity[0],
+        #         -window.transform.velocity[1],
+        #     )
+        #     window.transform.position = (window.transform.position[1], 20)
+        # if window.transform.position[1] > 1080:
+        #     window.transform.velocity = (
+        #         window.transform.velocity[0],
+        #         -window.transform.velocity[1],
+        #     )
+        #     window.transform.position = (window.transform.position[1], 1060)
+
+        # if (
+        #     not length(sub(window.transform.position, (1920 // 2, 1080 // 2)))
+        #     == 1920 // 6
+        # ):
+        #     desired_position = add(
+        #         (1920 // 2, 1080 // 2),
+        #         mul(
+        #             unit(sub(window.transform.position, (1920 // 2, 1080 // 2))),
+        #             1920 // 6,
+        #         ),
+        #     )
+        #
+        #     window.transform.velocity = add(
+        #         window.transform.velocity,
+        #         mul(sub(desired_position, window.transform.position), 0.1),
+        #     )
 
         if not window.being_held:
+            window.transform.velocity = add(window.transform.velocity, (0, 20))
             window.transform.velocity = mul(window.transform.velocity, 0.99)
+            window.transform.angular_velocity *= 0.99
 
             window.transform.angle += window.transform.angular_velocity * self.dt
 
@@ -220,6 +264,38 @@ class MainWindow:
                 window.transform.position,
                 mul(window.transform.velocity, self.dt),
             )
+
+            for corner in window.get_world_corners():
+                if corner[1] > 1080:
+                    hit_vector = sub(corner, window.transform.position)
+                    impulse = calc_impulse(
+                        window.transform.velocity,
+                        0.65,
+                        (0, -1),
+                        window.mass,
+                        window.moment_of_inertia,
+                        hit_vector,
+                    )
+
+                    window.transform.angular_velocity += (
+                        cross(hit_vector, mul((0, -1), impulse))
+                        / window.moment_of_inertia
+                    )
+
+                    window.transform.velocity = add(
+                        window.transform.velocity,
+                        div(mul((0, -1), impulse), window.mass),
+                    )
+
+            penetration_depth = max(
+                corner[1] - 1080 for corner in window.get_world_corners()
+            )
+
+            if penetration_depth > 0.01:
+                correction = (penetration_depth - 0.01) * 0.2
+                window.transform.position = add(
+                    window.transform.position, mul((0, -1), correction)
+                )
 
             return
 
@@ -275,7 +351,7 @@ class MainWindow:
 
 def main():
     app = MainWindow()
-    app.add_window(SubWindow(400, 400))
+    app.add_window(SubWindow(150, 150))
     # app.add_window(SubWindow(400, 400))
     app.sub_windows[0].transform.position = (1920 // 3, 1080 // 2)
     # app.sub_windows[1].transform.position = (1920 // 3 * 2, 1080 // 2)

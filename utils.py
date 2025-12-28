@@ -113,7 +113,10 @@ def ray_aab_intersection(
     if tmin > tmax:
         return False
 
-    return add(v, mul(dir, tmin))
+    if not tmin < 0:
+        return add(v, mul(dir, tmin))
+    else:
+        return add(v, mul(dir, tmax))
 
 
 def rotate(v: tuple, angle: float) -> tuple:
@@ -132,3 +135,19 @@ def calc_angular_torque(hit_point: tuple, hit_dir: tuple, impulse_vec: tuple) ->
 
 def fvti(v: tuple[float, ...]) -> tuple[int, ...]:
     return tuple([int(k) for k in v])
+
+
+def dot(a: tuple, b: tuple) -> float:
+    return a[0] * b[0] + a[1] * b[1]
+
+
+def cross(a: tuple, b: tuple) -> float:
+    return a[0] * b[1] - a[1] * b[0]
+
+
+def calc_impulse(
+    vel: tuple, e: float, normal: tuple, mass: float, moi: float, hit_vector: tuple
+) -> float:
+    return (-(e + 1) * dot(vel, normal)) / (
+        (1 / mass) + (cross(hit_vector, normal) ** 2 / moi)
+    )
