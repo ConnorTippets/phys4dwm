@@ -85,8 +85,15 @@ def in_rect(
 def ray_aab_intersection(
     v: tuple, dir: tuple, topleft: tuple, size: tuple
 ) -> tuple[int, int] | typing.Literal[False]:
-    idx = 1 / dir[0]
-    idy = 1 / dir[1]
+    try:
+        idx = 1 / dir[0]
+    except ZeroDivisionError:
+        idx = math.inf
+
+    try:
+        idy = 1 / dir[1]
+    except ZeroDivisionError:
+        idy = math.inf
 
     tx1 = (topleft[0] - v[0]) * idx
     tx2 = (topleft[0] + size[0] - v[0]) * idx
@@ -109,7 +116,7 @@ def ray_aab_intersection(
     return add(v, mul(dir, tmin))
 
 
-def rotate(v: tuple, angle: int) -> tuple:
+def rotate(v: tuple, angle: float) -> tuple:
     cos = math.cos(math.radians(angle))
     sin = math.sin(math.radians(angle))
 
@@ -117,3 +124,8 @@ def rotate(v: tuple, angle: int) -> tuple:
         v[0] * cos - v[1] * sin,
         v[0] * sin + v[1] * cos,
     )
+
+
+def calc_angular_torque(hit_point: tuple, hit_dir: tuple, impulse: float) -> float:
+    impulse_vec = mul(hit_dir, impulse)
+    return (hit_point[0] * impulse_vec[1]) - (hit_point[1] * impulse_vec[0])
