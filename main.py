@@ -61,7 +61,7 @@ class SubWindow:
         self.mass: int = 20
         self.moment_of_inertia: float = (self.mass * length_sqr(self.real_size)) / 12
 
-        self.image = pygame.image.load("./dankpods.png")
+        self.image = pygame.image.load("./cubve.png")
 
     def get_local_corners(
         self, titlebar: bool = False
@@ -159,31 +159,31 @@ class MainWindow:
 
                 if in_rect(event.pos, topleft, topright, bottomright, bottomleft):
                     window.being_held = True
+                else:
+                    hit_point = ray_aab_intersection(
+                        window.transform.world_to_local((1920 // 3 * 2, 1080 // 2)),
+                        rotate(
+                            unit(sub(event.pos, (1920 // 3 * 2, 1080 // 2))),
+                            -window.transform.angle,
+                        ),
+                        window.get_local_corners()[0],
+                        window.real_size,
+                    )
 
-                hit_point = ray_aab_intersection(
-                    window.transform.world_to_local((1920 // 3 * 2, 1080 // 2)),
-                    rotate(
+                    if not hit_point:
+                        continue
+
+                    dir = rotate(
                         unit(sub(event.pos, (1920 // 3 * 2, 1080 // 2))),
                         -window.transform.angle,
-                    ),
-                    window.get_local_corners()[0],
-                    window.real_size,
-                )
+                    )
 
-                if not hit_point:
-                    continue
-
-                dir = rotate(
-                    unit(sub(event.pos, (1920 // 3 * 2, 1080 // 2))),
-                    -window.transform.angle,
-                )
-
-                # I = F*dT = M*A*dT
-                impulse = window.mass * 20000 * 4
-                window.transform.angular_velocity += (
-                    calc_angular_torque(hit_point, dir, impulse)
-                    / window.moment_of_inertia
-                )
+                    # I = F*dT = M*A*dT
+                    impulse = window.mass * 20000 * 4
+                    window.transform.angular_velocity += (
+                        calc_angular_torque(hit_point, dir, impulse)
+                        / window.moment_of_inertia
+                    )
         elif event.type == pygame.MOUSEBUTTONUP and event.button == 1:
             for window in self.sub_windows:
                 window.being_held = False
@@ -228,7 +228,10 @@ class MainWindow:
 
                 pygame.draw.circle(self.screen, "red", (1920 // 3 * 2, 1080 // 2), 10)
 
-                window.transform.angle += window.transform.angular_velocity * self.dt
+                if not window.being_held:
+                    window.transform.angle += (
+                        window.transform.angular_velocity * self.dt
+                    )
 
                 if not intersect is False:
                     pygame.draw.circle(
